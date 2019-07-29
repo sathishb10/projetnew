@@ -1,0 +1,141 @@
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<html>
+    <style>
+        .tablecss {
+            font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; border-collapse: collapse; width: 100%;
+        }
+        .tablecss td, .tablecss th {
+            border: 1px solid #ddd; padding: 8px;
+        }
+        .tablecss tr:nth-child(odd){ background-color: #f2f2f2; }
+        .tablecss tr:hover { background-color: #ddd; }
+        .tablecss th {
+            padding-top: 12px; padding-bottom: 12px; text-align: center; background-color: lavender; color: black; font-weight: bold;
+        }
+    </style>
+    <body onload="loadData()">
+        <center>
+            <h3>Agent Files Details</h3>
+            <table id="files" class="tablecss" style="width: 1000px;"></table>
+        </center>
+        <div class="modal fade" id="myModal" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                        <h4 class="modal-title">Download File</h4>
+                    </div>
+                    <div class="modal-body">
+                        <form>
+                            <div class="row">
+                                <div class="col-md-3"></div>
+                                <div class="col-md-3"><label for="">User Name</label></div>
+                                <div class="col-md-4"><input type="text" class="form-control" disabled="true" name="uname" id="uname" placeholder="User Name"></div>
+                                <div class="col-md-2"></div>
+                            </div><br>
+                            <div class="row">
+                                <div class="col-md-3"></div>
+                                <div class="col-md-3"><label for="">Secrect Key</label></div>
+                                <div class="col-md-4"><input type="text" class="form-control" name="key" id="key" placeholder="Key"></div>
+                                <div class="col-md-2"></div>
+                            </div><br>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <input type="hidden" name="hkey" id="hkey">
+                                    <input type="hidden" name="docid" id="docid">
+                                </div>
+                                <div class="col-md-3"><button type="button" id="submit" class="btn btn-info" data-dismiss="modal" onclick="downloadDoc()">Download</button></div>
+                                <div class="col-md-3"></div>
+                            </div>
+                        </form>   
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>  
+    </body>
+</html>
+<script>
+    const username=sessionStorage.getItem("username");
+    function performAjax(httpMethod, url, params) {
+        const myPromise = new Promise((resolve, reject) => {
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    resolve(this.responseText);
+                }
+                if (this.status == 500) {
+                    reject({ error: true, message: "ServerError" });
+                }
+                if (this.status == 404) {
+                    reject({ error: true, message: "Resource not found" });
+                }
+            };
+            xhttp.open(httpMethod, url, true);
+            xhttp.setRequestHeader("Content-Type", "application/json");
+            params ? xhttp.send(params) : xhttp.send();
+        });
+        return myPromise;
+    }
+
+    function loadData() {
+        const getLeakFilesPromise = performAjax("GET", `http://localhost:1234/user/viewagentfiles?username=${username}&from=${username}`);
+        getLeakFilesPromise
+        .then((LeakFilesList) => {
+            showLeakFilesDetails(LeakFilesList);
+        })
+        .catch(err => {
+            alert(err.message);
+        })
+    }
+
+    function showLeakFilesDetails(data) {
+        const records = JSON.parse(data);
+        let tableRow = '';
+        const tableHeader = `<tr style="background: lavender;"><th>S.No.</th><th>From&nbsp;Name</th><th>To&nbsp;Name</th><th>Subject</th><th>Date</th><th>Key</th><th>Action</th></tr>`;
+        if(records.length > 0) {
+            tableRow = records.map((rec, index) => {
+                let downloadButton = `<a class="fa fa-download" style="color:blue; font-size:22px;" data-toggle="modal" data-target="#myModal" onclick="ShowPopUp('${rec._id}', '${rec.from}', '${rec.key}')"></a>`;
+                return `<tr><td align="right">${index + 1}</td><td>${rec.from}</td><td>${rec.username}</td><td>${rec.subject}</td><td>${rec.date}</td><td>${rec.key}</td><td align="center">${downloadButton}</td></tr>`;
+            });
+            document.getElementById("files").innerHTML = `${tableHeader}${tableRow.join('')}`;
+        }
+        else {
+            tableRow = `<tr><td colspan="7" align="center">No Data Found</td></tr>`;
+            document.getElementById("files").innerHTML = `${tableHeader}${tableRow}`;
+        }
+    }
+    
+    function ShowPopUp(id, username, key) {
+        event.preventDefault();
+        document.getElementById("uname").value = username;  
+        document.getElementById("hkey").value = key; 
+        document.getElementById("docid").value = id; 
+    }
+
+    function downloadDoc() {
+        const id=document.getElementById("docid").value
+        const hkey=document.getElementById("hkey").value
+        const key=document.getElementById("key").value
+        if(hkey==key) {            
+            const getFilesPromise = performAjax("GET", `http://localhost:1234/user/downloadAgentFiles/${id}`);
+            getFilesPromise
+            .then((response) => {            
+                window.open(JSON.parse(response).file);
+            })
+            .catch(err => {
+                alert(err.message);
+            })
+        }
+        else {
+            alert('Invalid Secrect Key')
+        }
+        document.getElementById("key").value = "";
+    }                    
+
+</script>

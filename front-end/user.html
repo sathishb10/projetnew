@@ -1,0 +1,106 @@
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+
+<script>
+    let users = [];
+    function performAjax(httpMethod, url, params) {
+        const myPromise = new Promise((resolve, reject) => {
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    resolve(this.responseText);
+                }
+                if (this.status == 500) {
+                    reject({ error: true, message: "ServerError" });
+                }
+                if (this.status == 404) {
+                    reject({ error: true, message: "Resource not found" });
+                }
+            };
+            xhttp.open(httpMethod, url, true);
+            xhttp.setRequestHeader("Content-Type", "application/json");
+            params ? xhttp.send(params) : xhttp.send();
+        });
+        return myPromise;
+    }
+
+    function UserLogin() {
+        const username = document.getElementById("uname").value;
+        const password = document.getElementById("password").value;
+        const getLoginPromise = performAjax(
+            "GET",
+            `http://localhost:1234/User/userlogin?username=${username}&password=${password}`
+        );
+        getLoginPromise
+        .then((loginPromise) => {
+            if (loginPromise == "" || loginPromise == null) {
+                alert('Login Faild');
+            }
+            else {
+                const data = JSON.parse(loginPromise);
+                const users = [data].map(record => {
+                    return record;
+                });
+                users.map(user => {
+                    sessionStorage.setItem("userid", user._id);
+                    sessionStorage.setItem("username", user.username);
+                    window.top.location.href = "user";
+                });
+            }
+        })
+        .catch(err => {
+            alert(err.message);
+        })
+    }
+
+</script>
+</head>
+<style>
+    .footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: rgb(228, 214, 21);
+        color: black;
+        text-align: center;
+        border-radius: 10px;
+    }
+</style>
+<div class="row">
+    <div class="col-md-2"></div>
+    <div class="col-md-8">
+        <div style="background-color:white"><br>
+            <div class="row">
+                <div class="col-md-5"></div>
+                <div class="col-md-4">
+                    <h3 style="color:magenta">User Login</h3>
+                </div>
+                <div class="col-md-3"></div>
+            </div><br>
+            <div class="row">
+                <div class="col-md-3"></div>
+                <div class="col-md-1"><label for="">UserName</label></div>
+                <div class="col-md-4"><input type="text" class="form-control" name="uname" id="uname" placeholder="User Name"></div>
+                <div class="col-md-4"></div>
+            </div><br>
+            <div class="row">
+                <div class="col-md-3"></div>
+                <div class="col-md-1"><label for="">Password</label></div>
+                <div class="col-md-4"><input type="Password" class="form-control" name="password" id="password" placeholder="Password"></div>
+                <div class="col-md-4"></div>
+            </div><br><br>
+            <div class="row">
+                <div class="col-md-5"></div>
+                <div class="col-md-3"><button type="button" class="btn btn-info" onclick="UserLogin()">Login</button></div>
+                <div class="col-md-4"></div>
+            </div><br>
+            <div class="row">
+                <div class="col-md-6"></div>
+                <div class="col-md-6"><a href="http://localhost:4567/registration" style="color:blue;">New User Register Here?</a></div>
+            </div><br><br>
+        </div><br>
+    </div>
+    <div class="col-md-2"></div>
+</div>

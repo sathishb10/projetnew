@@ -1,0 +1,116 @@
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+<html>
+    <body onload="getUserNames()">  
+    </body>
+</html>
+<br>
+<div class="row">
+    <div class="col-md-3"></div>
+    <div class="col-md-2"><label for="">Select User</label></div>
+    <div class="col-md-3"><select id="username" class="form-control">
+            <option value="--Select--">--Select--</option>
+    </select></div>
+    <div class="col-md-4"></div>
+</div><br>
+<div class="row">
+    <div class="col-md-3"></div>
+    <div class="col-md-2"><label for="">Subject</label></div>
+    <div class="col-md-3"><input type="text" class="form-control" id="subject" placeholder="Subject"></div>
+    <div class="col-md-4"></div>
+</div><br>
+<div class="row">
+    <div class="col-md-3"></div>
+    <div class="col-md-2"><label for="">Choose File</label></div>
+    <div class="col-md-3"><input type="file" id="file" ></div>
+    <div class="col-md-4"></div>
+</div><br>
+<div class="row">
+    <div class="col-md-5"></div>
+    <div class="col-md-3"><button type="button" class="btn btn-info" onclick="SendFile()">Send File</button></div>
+    <div class="col-md-4"></div>
+</div>
+
+<script>
+    function performAjax(httpMethod, url, params) {
+        const myPromise = new Promise((resolve, reject) => {
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    resolve(this.responseText);
+                }
+                if (this.status == 500) {
+                    reject({ error: true, message: "ServerError" });
+                }
+                if (this.status == 404) {
+                    reject({ error: true, message: "Resource not found" });
+                }
+            };
+            xhttp.open(httpMethod, url, true);
+            xhttp.setRequestHeader("Content-Type", "application/json");
+            params ? xhttp.send(params) : xhttp.send();
+        });
+        return myPromise;
+    }
+
+    function getUserNames() {
+        const getUsersPromise = performAjax("GET", "http://localhost:1234/admin/viewUsers");
+        getUsersPromise
+        .then((usersList) => {
+            bindUserNames(usersList);
+        })
+        .catch(err => {
+            alert(err.message);
+        })
+    }
+        
+    function bindUserNames(data) {
+        const users = JSON.parse(data);
+        let user = document.getElementById("username");
+        for (let i = 0; i < users.length; i++) {
+            let option = document.createElement("OPTION");
+            option.innerHTML = users[i].username;
+            option.value = users[i].username+'%'+users[i].emailid;
+            user.options.add(option);
+        }     
+    }
+
+    function SendFile() {
+        const key= Math.floor((Math.random() * 1000000) + 1);
+        var currentDate = new Date()
+        var day = currentDate.getDate()
+        var month = currentDate.getMonth() + 1
+        var year = currentDate.getFullYear()
+        const date = day + "-" + month + "-" + year;
+        
+        const data = document.getElementById("username").value;
+        const str=data.split("%");
+        const username = str[0];
+        const emailid = str[1];
+        const subject = document.getElementById("subject").value;
+        const file = document.getElementById("file").files;
+
+        if (file.length > 0) {
+            var fileToLoad = file[0];
+            var fileReader = new FileReader();
+            fileReader.onload = function(fileLoadedEvent) {
+                const filepath = fileLoadedEvent.target.result;
+                const getSendFilePromise = performAjax(
+                    "POST",
+                    `http://localhost:1234/admin/sendFiles`,
+                    JSON.stringify({ username, subject, file:filepath, key, date, emailid })
+                );
+                getSendFilePromise
+                .then((sendFilePromise) => {
+                    alert('File Send Successfully');
+                })
+                .catch(err => {
+                    alert(err.message);
+                })
+            }
+            fileReader.readAsDataURL(fileToLoad);
+        }
+    }
+
+</script>
